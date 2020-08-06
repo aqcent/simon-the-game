@@ -1,6 +1,6 @@
 <template>
   <div class="board">
-    <button @click="$emit('start', selectedDelay)">Start</button>
+    <button @click="$emit('start', selectedDelay)" :disabled="true && status == 'Loading'">Start</button>
     <select v-model="selectedDelay">
       <option v-for="(option, index) in options" :key="index" :value="option.delay">{{option.title}}</option>
     </select>
@@ -71,6 +71,12 @@ export default {
   }
   .Fail {
     background-color: rgb(196, 43, 16);
+  }
+  .Loading {
+    background-color: rgb(224, 250, 109);
+  }
+  .FreePad {
+    background-color: rgba(126, 126, 126, 0.452);
   }
 }
 @media (max-width: 400px) {

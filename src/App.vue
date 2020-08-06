@@ -1,5 +1,5 @@
 <template>
-  <div id="app">    
+  <div id="app">
     <Pad
       msg="Welcome to Your Vue.js App"
       :sequence="sequence"
@@ -8,9 +8,10 @@
       :active="isPadActive"
       @padClick="checkUserSequence"
       @finishPlaySequence="finishPlaySequence"
+      @loadComplete="preloadComplete"
     />
-    <!-- <button @click="playSequence">play</button> -->    
-    <Board @start="startGame" :currentDelay="delay" :round="round" :status="status"/>
+    <!-- <button @click="playSequence">play</button> -->
+    <Board @start="startGame" :currentDelay="delay" :round="round" :status="status" />
   </div>
 </template>
 
@@ -27,28 +28,33 @@ export default {
   data: function () {
     return {
       round: 0,
-      delay: .4,
+      delay: 0.4,
       sequence: [],
       compareSequence: [],
       needToPlay: false,
-      isPadActive: true,
+      isPadActive: false,
       GameStatus: {
-        FreePad: 'FreePad',
+        Loading: "Loading",
+        FreePad: "FreePad",
         Game: null,
-        Fail: 'Fail',
-        Correct: 'Correct'
+        Fail: "Fail",
+        Correct: "Correct",
       },
-      status: 'FreePad',
+      status: "Loading",
     };
   },
   methods: {
+    preloadComplete() {
+      this.isPadActive = true;
+      this.status = this.GameStatus.FreePad;
+    },
     checkUserSequence(indexButton) {
       if (this.status == this.GameStatus.FreePad) return null;
 
-      if (this.compareSequence.shift() !== indexButton) {        
-        this.isPadActive = false;        
+      if (this.compareSequence.shift() !== indexButton) {
+        this.isPadActive = false;
         this.status = this.GameStatus.Fail;
-        setTimeout(() => this.endGame(), 3000);        
+        setTimeout(() => this.endGame(), 3000);
       } else if (this.compareSequence.length === 0) {
         this.isPadActive = false;
         this.status = this.GameStatus.Correct;
@@ -64,6 +70,7 @@ export default {
       this.isPadActive = true;
     },
     startGame(delay) {
+      this.needToPlay = false;
       this.delay = delay;
       this.round = 0;
       this.sequence = [];
@@ -81,23 +88,21 @@ export default {
       this.sequence.push(newStep);
       this.compareSequence = [...this.sequence];
       setTimeout(() => {
-        this.playSequence(),
-        this.status = this.GameStatus.Game;
-        }, 1000);
+        this.playSequence(), (this.status = this.GameStatus.Game);
+      }, 1000);
     },
   },
 };
 </script>
 
 <style lang="scss">
-
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;  
+  margin-top: 60px;
   display: flex;
   justify-content: center;
   align-items: center;

@@ -7,7 +7,7 @@
         v-for="(sample, index) in samples"
         :key="index"
         :style="{ backgroundColor: padColors[index]}"
-        @click="pressPad(sample, index)"
+        @click="pressPad(sample, index)"        
       />
     </div>
   </div>
@@ -25,7 +25,7 @@ export default {
   data: function () {
     return {
       samples: [],
-      sounds: ["/audio/1.mp3", "/audio/2.mp3", "/audio/3.mp3", "/audio/4.mp3"],
+      sounds: ["audio/1.mp3", "./audio/2.mp3", "audio/3.mp3", "audio/4.mp3"],
       padColors: ["#2c3e50", "#8e44ad", "#2980b9", "#16a085"],
     };
   },
@@ -39,57 +39,78 @@ export default {
       sample.currentTime = 0;
       sample.play();
     },
-    async playSequence(sequence, delay) {
-      for (let step of sequence) {
-        await new Promise((resolve) =>
-          setTimeout(() => {
-            (async () => {
-              this.playSound(this.samples[step]);
-              this.samples[step].active = true;
-              await this.$forceUpdate();
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(() => resolve(), ms));
+    },
+    playStep(step) {
+      return new Promise((resolve) => {
+        (async () => {
+          const animationTime = 350;
+          this.playSound(this.samples[step]);
 
-              await new Promise((resolve) =>
-                setTimeout(() => {
-                  this.samples[step].active = false;
-                  resolve();
-                }, (delay * 1000) / 2)
-              );
-              this.$forceUpdate();
-            })();
-            resolve();
-          }, delay * 1000)
-        );
+          //toggle active class
+          this.samples[step].active = true;
+          await this.$forceUpdate();
+          await this.sleep(animationTime);
+          this.samples[step].active = false;
+          await this.$forceUpdate();
+
+          resolve();
+        })();
+      });
+    },
+    async playSequence(sequence) {
+      for (let step of sequence) {
+        await this.playStep(step);
+        await this.sleep(this.delay * 1000);
+
+        if (!this.needToPlaySequence) {
+          this.$emit("finishPlaySequence");
+          return null;
+        }
       }
-      setTimeout(() => {
-        this.$emit("finishPlaySequence");
-      }, delay * 1000);
+      this.$emit("finishPlaySequence");
     },
     initAudioSamples() {
+      let audioPreloader = [];
+
       this.sounds.forEach((sound) => {
         let sample = new Audio(sound);
-        sample.addEventListener("canplaythrough", function foo() {
-          sample.active = false;
-          sample.removeEventListener("canplaythrough", foo);
-        });
+        sample.load();
+        audioPreloader.push(
+          new Promise((resolve) => {
+            sample.addEventListener("canplaythrough", function foo() {
+              sample.active = false;
+              sample.removeEventListener("canplaythrough", foo);
+              resolve();
+            });
+          })
+        );
         this.samples.push(sample);
       });
+      return Promise.all(audioPreloader);
     },
   },
   watch: {
     needToPlaySequence: function () {
-      if (this.needToPlaySequence) this.playSequence(this.sequence, this.delay);
+      if (this.needToPlaySequence) this.playSequence(this.sequence);
     },
   },
-  created() {    
-    this.initAudioSamples();
-  }
+  async created() {
+    try {
+      await this.initAudioSamples();
+      this.$emit("loadComplete");
+    } catch (e) {
+      alert(e);
+    }
+  },
 };
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 .padWrapper {
-  display: inline-block;  
+  display: inline-block;
 }
 .pad {
   margin: 30px auto;
@@ -114,7 +135,7 @@ export default {
   }
   &:hover,
   &.active {
-    filter: brightness(130%);    
+    filter: brightness(130%);
   }
 }
 </style>
